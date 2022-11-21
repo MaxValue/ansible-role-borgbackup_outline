@@ -1,0 +1,23 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Create and download Outline export
+      # desc: Launch download mode for getting a fresh Outline export
+      ansible.builtin.include_tasks:
+        file: download.yml
+
+    - name: Unzip and backup downloaded Outline export
+      # Unzip and archive the downloaded export to the borg repository
+      ansible.builtin.include_tasks:
+        file: _archive_zip.yml
+      vars:
+        _outline_archive: "{{ outline_exportfile }}"
+        _borgbackup_timestamp: "{{ (result_checkexport.json|community.general.json_query('data.createdAt')|to_datetime(_outline_timeformat)).strftime(_borgbackup_timeformat) }}"
+
+    - name: Delete tmp zip dir
+      # desc: Delete the tmp directory where the export was downloaded to
+      ansible.builtin.file:
+        state: absent
+        path: "{{ _outline_downloadpath }}"
+...

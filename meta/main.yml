@@ -1,0 +1,37 @@
+galaxy_info:
+  author: Maximilian Fuxjäger
+  description: Backup getoutline.com instances using borgbackup
+
+  issue_tracker_url: https://gitlab.com/maxvalue-glue/ansible-role-borgbackup-outline
+
+  license: MIT
+
+  min_ansible_version: 2.1
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+
+  galaxy_tags:
+    - administration
+    - api
+    - archive
+    - backup
+    - backups
+    - borg
+    - borgbackup
+    - cli
+    - deploy
+    - deployment
+    - devops
+    - documentation
+    - download
+    - exporter
+    - instance
+    - local
+    - middleware
+    - rest
+    - web
+    - website
+dependencies: []

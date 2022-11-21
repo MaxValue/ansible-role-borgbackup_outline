@@ -1,0 +1,38 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Delete exports
+      when: outline_delete_old_exports
+      block:
+        - name: Get old exports
+          # desc: Get all old Outline exports which are stored on the Outline servers.
+          ansible.builtin.uri:
+            method: POST
+            body_format: json
+            return_content: yes
+            url: "https://{{ outline_domain }}/api/fileOperations.list"
+            headers:
+              User-Agent: "{{ _outline_useragent }}"
+              Authorization: "Bearer {{ outline_token }}"
+            body:
+              limit: 100
+              offset: 0
+              type: export
+          register: result_oldexports
+
+        - name: Delete old exports
+          # desc: For each online Outline export delete it.
+          ansible.builtin.uri:
+            method: POST
+            body_format: json
+            url: https://{{ outline_domain }}/api/fileOperations.delete
+            headers:
+              User-Agent: "{{ _outline_useragent }}"
+              Authorization: "Bearer {{ outline_token }}"
+            body:
+              id: "{{ item }}"
+          changed_when: _result_deleteoldoutline.json|community.general.json_query('success')
+          register: _result_deleteoldoutline
+          loop: "{{ result_oldexports.json|community.general.json_query('data[].id') }}"
+...

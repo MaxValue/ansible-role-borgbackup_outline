@@ -1,0 +1,48 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Create tmp dir for unzipping the Outline export
+      # desc: A directory needs to exist for unzipping the Outline export file.
+      ansible.builtin.tempfile:
+        state: directory
+      register: _result_tmpdir_unzip
+
+    - name: Unarchive Outline export to tmp dir
+      # desc: Unzip the Outline export file to the tmp directory we just created.
+      ansible.builtin.unarchive:
+        dest: "{{ _result_tmpdir_unzip.path }}"
+        remote_src: yes
+        src: "{{ _outline_archive }}"
+
+    - name: Create tmp dir for checking out the borg archive
+      # desc: A directory needs to exist for checking out the borg archive.
+      ansible.builtin.tempfile:
+        state: directory
+      register: _result_tmpdir_borgcheckout
+
+    - name: Export borg archive to tmp dir
+      # desc: Checkout the borg archive to the tmp directory we just created.
+      ansible.builtin.expect:
+        chdir: "{{ _result_tmpdir_borgcheckout.path }}"
+        command: "{{ borgbackup_borgpath }} extract {{ (borgbackup_sshcommand is defined)|ternary(\"--rsh '\"+(borgbackup_sshcommand|default(''))+\"'\",'') }} {{ borgbackup_repo }}::{{ _borgbackup_archive }}"
+        responses:
+          "^Enter passphrase for key [^\\n]+:": "{{ borgbackup_passphrase }}"
+
+    - name: Compare the 2 directories against each other
+      # desc: Run diff against the 2 temporary directories in order to see if they are equal. If they are not equal, the diff return code is nonzero and the task fails which fails the role run.
+      ansible.builtin.shell:
+        cmd: "diff --recursive {{ _result_tmpdir_unzip.path }} {{ _result_tmpdir_borgcheckout.path }} > /dev/null"
+
+    - name: Delete tmp unzip dir of Outline export
+      # desc: Delete the temporary directory for unzipping the Outline export.
+      ansible.builtin.file:
+        state: absent
+        path: "{{ _result_tmpdir_unzip.path }}"
+
+    - name: Delete tmp export dir of borg archive
+      # desc: Delete the temporary directory for checking out the borg archive.
+      ansible.builtin.file:
+        state: absent
+        path: "{{ _result_tmpdir_borgcheckout.path }}"
+...

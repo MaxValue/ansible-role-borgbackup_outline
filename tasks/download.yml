@@ -1,0 +1,38 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Ensure defined download dir exists
+      # desc: This just creates the given exports directory if it does not exist yet
+      when: outline_exports_dir is defined
+      ansible.builtin.file:
+        path: "{{ outline_exports_dir }}"
+        state: directory
+
+    - name: Create tmp dir for storing the download
+      # desc: If the user does not provide an exports dir, a temporary one will be created
+      when: outline_exports_dir is not defined
+      ansible.builtin.tempfile:
+        state: directory
+      register: _result_tmpdir_zip
+
+    - name: Set download path for export
+      # desc: Since the outline_exports_dir var is not mandatory, it needs to be defined wher the actual download path for the export is.
+      ansible.builtin.set_fact:
+        _outline_downloadpath: >-
+          {% if outline_exports_dir is defined -%}
+          {{ outline_exports_dir }}
+          {%- else -%}
+          {{ _result_tmpdir_zip.path }}
+          {%- endif %}
+
+    - name: Create and download Outline export
+      # desc: Create a new Outline export and download it.
+      ansible.builtin.include_tasks:
+        file: _download.yml
+
+    - name: Delete Outline exports on website
+      # desc: Delete all old Outline export which are stored on the Outline servers.
+      ansible.builtin.include_tasks:
+        file: _delete_exports.yml
+...

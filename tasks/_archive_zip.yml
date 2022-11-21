@@ -1,0 +1,34 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Create tmp dir for unzipping the download
+      # desc: A directory needs to exist for unzipping the Outline export file.
+      ansible.builtin.tempfile:
+        state: directory
+      register: _result_tmpdir_unzip
+
+    - name: Unarchive downloaded export
+      # desc: Unzip the Outline export file to the tmp directory we just created.
+      ansible.builtin.unarchive:
+        dest: "{{ _result_tmpdir_unzip.path }}"
+        remote_src: yes
+        src: "{{ _outline_archive }}"
+
+    - name: Create backup of tmp dir
+      # desc: Create a new borg archive of the temporary directory. We will do this directly from the tmp dir in order to prevent storing the tmp dir path (keep this in mind when checking out archives from the borg repo).
+      ansible.builtin.expect:
+        chdir: "{{ _result_tmpdir_unzip.path }}"
+        command: "{{ borgbackup_borgpath }} create --json {{ (borgbackup_sshcommand is defined)|ternary(\"--rsh '\"+(borgbackup_sshcommand|default(''))+\"'\",'') }} {{ (_borgbackup_timestamp|length>0)|ternary('--timestamp '+_borgbackup_timestamp,'') }} ::{{ (_borgbackup_timestamp|length>0)|ternary((_borgbackup_timestamp|to_datetime(_borgbackup_timeformat)).strftime(borgbackup_archivenameformat),now().utcnow().strftime(borgbackup_archivenameformat)) }} ."
+        responses:
+          "^Enter passphrase for key [^\\n]+:": "{{ borgbackup_passphrase }}"
+      environment:
+        "TZ": "UTC"
+        "BORG_REPO": "{{ borgbackup_repo }}"
+
+    - name: Delete tmp unzip dir
+      # desc: Delete the temporary directory for unzipping the Outline export.
+      ansible.builtin.file:
+        state: absent
+        path: "{{ _result_tmpdir_unzip.path }}"
+...

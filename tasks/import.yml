@@ -1,0 +1,53 @@
+---
+- delegate_to: localhost
+  run_once: yes
+  block:
+    - name: Get list of archives in repo
+      # desc: Get all existing borg archives in the borg repository
+      ansible.builtin.expect:
+        command: "{{ borgbackup_borgpath }} list --json {{ (borgbackup_sshcommand is defined)|ternary(\"--rsh '\"+(borgbackup_sshcommand|default(''))+\"'\",'') }}"
+        responses:
+          "^Enter passphrase for key [^\\n]+:": "{{ borgbackup_passphrase }}"
+      environment:
+        "TZ": "UTC"
+        "BORG_REPO": "{{ borgbackup_repo }}"
+      changed_when: no
+      register: _result_borglist_raw
+
+    - name: Convert borg list output to JSON
+      # desc: Convert the response string to proper JSON so it can be parsed
+      ansible.builtin.set_fact:
+        _result_borglist: "{{ _result_borglist_raw.stdout_lines[1:]|join()|from_json }}"
+
+    - name: Get list of Outline exports
+      # desc: Get all ZIP-files in the given directory
+      ansible.builtin.find:
+        file_type: file
+        paths:
+          - "{{ outline_exports_dir }}"
+        patterns:
+          - "*.zip"
+      register: _result_outlineexports_unsorted
+
+    - name: Sort Outline exports by filename ascending
+      # desc: Sort these files by filename ascending. When the filename contains a properly formatted date string,  the list is expected to be chronological too. This is not really relevant, but maybe it improves borg performance.
+      ansible.builtin.set_fact:
+        _result_outlineexports:
+          files: "{{ _result_outlineexports_unsorted.files | sort(attribute='path') }}"
+
+    - name: Unzip and backup downloaded Outline export
+      # desc: For each Outline export which is not already in the borg repository, unzip it and add it to the borg repository as new archive with the proper timestamp.
+      when: (_result_borglist|community.general.json_query(query)|length) == 0
+      ansible.builtin.include_tasks:
+        file: _archive_zip.yml
+      vars:
+        _outline_archive: "{{ item.path }}"
+        _borgbackup_timestamp: >-
+          {% if outline_exports_timesource in ['ctime','atime','mtime'] -%}
+          {{ now().utcfromtimestamp(item[outline_exports_timesource]).strftime(_borgbackup_timeformat) }}
+          {%- else -%}
+          {{ (item.path|basename|to_datetime(outline_exports_pattern)).strftime(_borgbackup_timeformat) }}
+          {%- endif %}
+        query: "archives[?starts_with(time,'{{ _borgbackup_timestamp }}')]"
+      loop: "{{ _result_outlineexports.files }}"
+...
