@@ -4,6 +4,8 @@ An Ansible Role that backups an instance of getoutline.com to a borgbackup repos
 
 This role only runs on the ansible controller.
 
+[[_TOC_]]
+
 ## Requirements
 
 * [borg](https://borgbackup.readthedocs.io/en/stable/installation.html)
