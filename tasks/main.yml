@@ -1,6 +1,7 @@
 ---
-- delegate_to: localhost
-  run_once: yes
+- name: Create, download, and archive an Outline export into borg
+  delegate_to: localhost
+  run_once: true
   block:
     - name: Create and download Outline export
       # desc: Launch download mode for getting a fresh Outline export
@@ -13,7 +14,11 @@
         file: _archive_zip.yml
       vars:
         _outline_archive: "{{ outline_exportfile }}"
-        _borgbackup_timestamp: "{{ (result_checkexport.json|community.general.json_query('data.createdAt')|to_datetime(_outline_timeformat)).strftime(_borgbackup_timeformat) }}"
+        _borgbackup_timestamp: >
+          {{ (result_checkexport.json |
+              community.general.json_query('data.createdAt') |
+              to_datetime(_outline_timeformat)).strftime(_borgbackup_timeformat)
+          }}
 
     - name: Delete tmp zip dir
       # desc: Delete the tmp directory where the export was downloaded to

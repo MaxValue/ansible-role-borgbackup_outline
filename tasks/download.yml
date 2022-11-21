@@ -1,6 +1,7 @@
 ---
-- delegate_to: localhost
-  run_once: yes
+- name: Create and download an Outline export
+  delegate_to: localhost
+  run_once: true
   block:
     - name: Ensure defined download dir exists
       # desc: This just creates the given exports directory if it does not exist yet

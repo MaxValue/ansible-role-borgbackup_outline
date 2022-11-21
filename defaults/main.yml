@@ -1,8 +1,8 @@
 ---
-outline_delete_old_exports: yes
+outline_delete_old_exports: true
 outline_timeout: 300
 _outline_checkdelay: 7
-_outline_useragent: "ansible ({{ role_path|basename }} role by maxvalue)"
+_outline_useragent: "ansible ({{ role_path | basename }} role by maxvalue)"
 _outline_timeformat: "%Y-%m-%dT%H:%M:%S.%f%z"
 borgbackup_borgpath: "borg"
 borgbackup_archivenameformat: "{{ outline_domain }}-{{ _borgbackup_timeformat }}"

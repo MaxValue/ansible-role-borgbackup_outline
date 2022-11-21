@@ -1,6 +1,7 @@
 ---
-- delegate_to: localhost
-  run_once: yes
+- name: Request Outline export and download it
+  delegate_to: localhost
+  run_once: true
   block:
     - name: Create export
       # desc: Inititate the creation of an export of the Outline instance.
@@ -10,7 +11,7 @@
         headers:
           User-Agent: "{{ _outline_useragent }}"
           Authorization: "Bearer {{ outline_token }}"
-        return_content: yes
+        return_content: true
       register: _result_createexport
 
     - name: Wait for completion of export
@@ -18,32 +19,37 @@
       ansible.builtin.uri:
         method: POST
         body_format: json
-        return_content: yes
+        return_content: true
         url: "https://{{ outline_domain }}/api/fileOperations.info"
         headers:
           User-Agent: "{{ _outline_useragent }}"
           Authorization: "Bearer {{ outline_token }}"
         body:
-          id: "{{ _result_createexport.json|community.general.json_query('data.fileOperation.id')|string }}"
+          id: "{{ _result_createexport.json | community.general.json_query('data.fileOperation.id') | string }}"
       register: _result_checkexport
       until: _result_checkexport.json|community.general.json_query('data.state == `complete`')|bool
-      retries: "{{ (outline_timeout/_outline_checkdelay)|int }}"
+      retries: "{{ (outline_timeout / _outline_checkdelay) | int }}"
       delay: "{{ _outline_checkdelay }}"
 
     - name: Set final download destination
       # desc: Store the final destination for the Outline export file in a variable, so it can be used outside of this role.
       ansible.builtin.set_fact:
-        outline_exportfile: "{{ _outline_downloadpath }}/{{ (_result_checkexport.json|community.general.json_query('data.createdAt')|to_datetime(_outline_timeformat)).strftime(outline_exports_pattern) }}"
+        outline_exportfile: >
+          {{ _outline_downloadpath }}/{{
+            (_result_checkexport.json |
+            community.general.json_query('data.createdAt') |
+            to_datetime(_outline_timeformat)).strftime(outline_exports_pattern)
+          }}
 
     - name: Download export
       # desc: Store the Outline export in the path we created before.
       ansible.builtin.uri:
         body:
-          id: "{{ _result_createexport.json|community.general.json_query('data.fileOperation.id') }}"
+          id: "{{ _result_createexport.json | community.general.json_query('data.fileOperation.id') }}"
         body_format: json
         dest: "{{ outline_exportfile }}"
         follow_redirects: all
-        force: yes
+        force: true
         headers:
           User-Agent: "{{ _outline_useragent }}"
           Authorization: "Bearer {{ outline_token }}"

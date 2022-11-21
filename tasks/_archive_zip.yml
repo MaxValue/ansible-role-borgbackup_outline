@@ -1,6 +1,7 @@
 ---
-- delegate_to: localhost
-  run_once: yes
+- name: Unzip Outline ZIP-file and create borg archive in repo
+  delegate_to: localhost
+  run_once: true
   block:
     - name: Create tmp dir for unzipping the download
       # desc: A directory needs to exist for unzipping the Outline export file.
@@ -12,14 +13,27 @@
       # desc: Unzip the Outline export file to the tmp directory we just created.
       ansible.builtin.unarchive:
         dest: "{{ _result_tmpdir_unzip.path }}"
-        remote_src: yes
+        remote_src: true
         src: "{{ _outline_archive }}"
 
     - name: Create backup of tmp dir
-      # desc: Create a new borg archive of the temporary directory. We will do this directly from the tmp dir in order to prevent storing the tmp dir path (keep this in mind when checking out archives from the borg repo).
+      # desc: >
+      #   Create a new borg archive of the temporary directory.
+      #   We will do this directly from the tmp dir in order to prevent storing the tmp dir path
+      #   (keep this in mind when checking out archives from the borg repo).
       ansible.builtin.expect:
         chdir: "{{ _result_tmpdir_unzip.path }}"
-        command: "{{ borgbackup_borgpath }} create --json {{ (borgbackup_sshcommand is defined)|ternary(\"--rsh '\"+(borgbackup_sshcommand|default(''))+\"'\",'') }} {{ (_borgbackup_timestamp|length>0)|ternary('--timestamp '+_borgbackup_timestamp,'') }} ::{{ (_borgbackup_timestamp|length>0)|ternary((_borgbackup_timestamp|to_datetime(_borgbackup_timeformat)).strftime(borgbackup_archivenameformat),now().utcnow().strftime(borgbackup_archivenameformat)) }} ."
+        command: >
+          {{ borgbackup_borgpath }} create
+          --json
+          {{ (borgbackup_sshcommand is defined) | ternary("--rsh '" + (borgbackup_sshcommand | default('')) + "'", '') }}
+          {{ (_borgbackup_timestamp | length > 0) | ternary('--timestamp ' + _borgbackup_timestamp, '') }}
+          ::{{
+            (_borgbackup_timestamp | length > 0) |
+            ternary((_borgbackup_timestamp |
+            to_datetime(_borgbackup_timeformat)).strftime(borgbackup_archivenameformat), now().utcnow().strftime(borgbackup_archivenameformat))
+          }}
+          .
         responses:
           "^Enter passphrase for key [^\\n]+:": "{{ borgbackup_passphrase }}"
       environment:

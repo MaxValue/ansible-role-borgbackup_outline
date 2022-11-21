@@ -1,6 +1,7 @@
 ---
-- delegate_to: localhost
-  run_once: yes
+- name: Get all online Outline exports and initiate deletion of those
+  delegate_to: localhost
+  run_once: true
   block:
     - name: Delete exports
       when: outline_delete_old_exports
@@ -10,7 +11,7 @@
           ansible.builtin.uri:
             method: POST
             body_format: json
-            return_content: yes
+            return_content: true
             url: "https://{{ outline_domain }}/api/fileOperations.list"
             headers:
               User-Agent: "{{ _outline_useragent }}"
@@ -34,5 +35,5 @@
               id: "{{ item }}"
           changed_when: _result_deleteoldoutline.json|community.general.json_query('success')
           register: _result_deleteoldoutline
-          loop: "{{ result_oldexports.json|community.general.json_query('data[].id') }}"
+          loop: "{{ result_oldexports.json | community.general.json_query('data[].id') }}"
 ...

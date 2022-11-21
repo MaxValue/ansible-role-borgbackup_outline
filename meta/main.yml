@@ -1,12 +1,14 @@
 galaxy_info:
-  author: Maximilian Fuxjäger
+  namespace: maxvalue
+  role_name: borgbackup_outline
   description: Backup getoutline.com instances using borgbackup
+  author: Maximilian Fuxjäger
 
   issue_tracker_url: https://gitlab.com/maxvalue-glue/ansible-role-borgbackup-outline
 
   license: MIT
 
-  min_ansible_version: 2.1
+  min_ansible_version: "2.1"
 
   platforms:
     - name: Ubuntu

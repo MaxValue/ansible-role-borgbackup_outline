@@ -1,23 +1,27 @@
 ---
-- delegate_to: localhost
-  run_once: yes
-  block:  
+- name: Get all Outline export files, get all borg archives, compare matching against each other
+  delegate_to: localhost
+  run_once: true
+  block:
     - name: Get list of archives in repo
       # desc: Get all existing archives in the borg repository.
       ansible.builtin.expect:
-        command: "{{ borgbackup_borgpath }} list --json {{ (borgbackup_sshcommand is defined)|ternary(\"--rsh '\"+(borgbackup_sshcommand|default(''))+\"'\",'') }}"
+        command: >
+          {{ borgbackup_borgpath }} list
+          --json
+          {{ (borgbackup_sshcommand is defined) | ternary("--rsh '" + (borgbackup_sshcommand | default('')) + "'", '') }}
         responses:
           "^Enter passphrase for key [^\\n]+:": "{{ borgbackup_passphrase }}"
       environment:
         "TZ": "UTC"
         "BORG_REPO": "{{ borgbackup_repo }}"
-      changed_when: no
+      changed_when: false
       register: _result_borglist_raw
 
     - name: Convert borg list output to JSON
       # desc: Convert the stringified JSON to proper JSON.
       ansible.builtin.set_fact:
-        _result_borglist: "{{ _result_borglist_raw.stdout_lines[1:]|join()|from_json }}"
+        _result_borglist: "{{ _result_borglist_raw.stdout_lines[1:] | join() | from_json }}"
 
     - name: Get list of Outline exports
       # desc: Get all files in the exports directory.
@@ -36,12 +40,12 @@
         file: _unarchive_diff.yml
       vars:
         _outline_archive: "{{ item.path }}"
-        _borgbackup_archive: "{{ (_result_borglist|community.general.json_query(query)|first).name }}"
+        _borgbackup_archive: "{{ (_result_borglist | community.general.json_query(query) | first).name }}"
         _borgbackup_timestamp: >-
-          {% if outline_exports_timesource in ['ctime','atime','mtime'] -%}
+          {% if outline_exports_timesource in ['ctime', 'atime', 'mtime'] -%}
           {{ now().utcfromtimestamp(item[outline_exports_timesource]).strftime(_borgbackup_timeformat) }}
           {%- else -%}
-          {{ (item.path|basename|to_datetime(outline_exports_pattern)).strftime(_borgbackup_timeformat) }}
+          {{ (item.path | basename | to_datetime(outline_exports_pattern)).strftime(_borgbackup_timeformat) }}
           {%- endif %}
         query: "archives[?starts_with(time,'{{ _borgbackup_timestamp }}')]"
       loop: "{{ _result_outlineexports.files }}"
