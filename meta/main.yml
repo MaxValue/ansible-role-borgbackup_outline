@@ -4,7 +4,7 @@ galaxy_info:
   description: Backup getoutline.com instances using borgbackup
   author: Maximilian Fuxjäger
 
-  issue_tracker_url: https://gitlab.com/maxvalue-glue/ansible-role-borgbackup-outline
+  issue_tracker_url: https://gitlab.com/maxvalue-ansible/ansible-role-borgbackup-outline
 
   license: MIT
 
